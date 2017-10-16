@@ -7,5 +7,7 @@ public class Test1 {
     @Test
     public void test1(){
         System.out.println("fdsfaaf需要");
+        Integer a= 321;
+        System.out.println(a.toBinaryString(a));
     }
 }
