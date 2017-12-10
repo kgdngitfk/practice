@@ -1,22 +1,30 @@
 package com.qian.md5;
 
+import org.jetbrains.annotations.Contract;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
+
+import javax.xml.bind.DatatypeConverter;
+
 /**
  * Created by User on 2017/6/7.
  */
 public class MD5 {
-    private static  int A0 = 0X01234567;
-    private static  int B0 = 0X89abcdef;
-    private static  int C0 = 0Xfedcba98;
-    private static  int D0 = 0X76543210;
-    /*private static  int A0 = 0x67452301;
+    private static final Logger logger = LoggerFactory.getLogger(MD5.class);
+//    private static  int A0 = 0X01234567;
+//    private static  int B0 = 0X89abcdef;
+//    private static  int C0 = 0Xfedcba98;
+//    private static  int D0 = 0X76543210;
+    private static  int A0 = 0x67452301;
     private static  int B0 = 0xefcdab89;
     private static  int C0 = 0x98badcfe;
-    private static  int D0 = 0x10325476;*/
-    private static int Atemp = 0X01234567;
-    private static int Btemp = 0X89abcdef;
-    private static int Ctemp = 0Xfedcba98;
-    private static int Dtemp = 0X76543210;
+    private static  int D0 = 0x10325476;
+    private static int Atemp = A0;
+    private static int Btemp = B0;
+    private static int Ctemp = C0;
+    private static int Dtemp = D0;
     private static byte[] originMessage;
+    private static byte[] appended;
     private static byte[] finalAppend;
     private static int[] groupMessage;
     /*
@@ -124,10 +132,11 @@ a = b + ((a + I(b,c,d) + X[k] + T[i]) <<< s). *//*
             D = D + DD
     end *//* 结束对I的循环*//*
 （5） 输出结果*/
-    public static byte[] bytes(String message) {
-        return message.getBytes();
+    private static void  bytes(String message) {
+        originMessage= message.getBytes();
     }
 
+    @Contract(pure = true)
     private static int calK(int length) {
         int k = 0;
         while (k * 64 + 56 < length) {
@@ -141,47 +150,46 @@ a = b + ((a + I(b,c,d) + X[k] + T[i]) <<< s). *//*
     据扩展至K*512+448位。即K*64+56个字节，K为整数。补位操作始终要执行，即使数据长度LEN
     对512求余的结果已是448。
     具体补位操作：补一个1，然后补0至满足上述要求。总共最少要补一位，最多补512位。*/
-    public static byte[] append(byte[] origin) {
-        originMessage = origin;
-        int k = calK(origin.length);
+    private static void append() {
+        int k = calK(originMessage.length);
         byte[] appended = new byte[k * 64 + 56 + 8];
         System.arraycopy(originMessage, 0, appended, 0, originMessage.length);
         byte first = -128;
         byte next = 0x0;
-        if (origin.length % 64 != 56) {
-            appended[origin.length] = first;
+        if (originMessage.length % 64 != 56) {
+            appended[originMessage.length] = first;
         }
-        for (int i = origin.length + 1; i < appended.length; i++) {
+        for (int i = originMessage.length + 1; i < appended.length; i++) {
             appended[i] = next;
         }
-        return appended;
+        MD5.appended=appended;
+        logger.debug("after append :{}", DatatypeConverter.printHexBinary(appended));
     }
 
     /* （2） 补数据长度
  用一个64位的数字表示数据的原始长度b，把b用两个32位数表示。那么只取B的低64位。当遇到b大于2^64这种极少遇到的情况时，这时，数据就被填补成长度为512位的倍数。也就是说，
  此时的数据长度是16个字（32位）的整数倍数。用M[0 ... N-1]表示此时的数据，其中的N是16
  的倍数。*/
-    public static byte[] appendLength(byte[] append) {
+    private static void appendLength() {
         long length = originMessage.length * 8;
         long mask = 0xFFL;
         int cnt = 0;
         byte by = 0;
         while (cnt < 8) {
             by = (byte) ((length & mask) >>> (cnt * 8));
-            append[append.length - (8 - cnt)] = by;
+            appended[appended.length - (8 - cnt)] = by;
             cnt++;
         }
-        finalAppend = append;
-        return append;
+        finalAppend = appended;
+        logger.debug("after append length is :{}", DatatypeConverter.printHexBinary(appended));
     }
 
     /**
      * 分组
      *
-     * @param finalAppend
      * @return
      */
-    public static int[] group(byte[] finalAppend) {
+    private static void group() {
         int[] group = new int[16];
         for (int i = 0; i < finalAppend.length / 4; i++) {
             for (int j = 0; j < 4; j++) {
@@ -194,7 +202,8 @@ a = b + ((a + I(b,c,d) + X[k] + T[i]) <<< s). *//*
             }
         }
         groupMessage = group;
-        return group;
+        logger.debug("after group :{}", DatatypeConverter.printHexBinary(appended));
+
 
     }
     /*
@@ -204,7 +213,7 @@ a = b + ((a + I(b,c,d) + X[k] + T[i]) <<< s). *//*
         return(a<<s)|(a>>>(32-s));//右移的时候，高位一定要补零，而不是补充符号位
     }
 
-    public static void mainLoop() {
+    private static void mainLoop() {
         int F,g;
         int A=A0;
         int B=B0;
@@ -227,21 +236,46 @@ a = b + ((a + I(b,c,d) + X[k] + T[i]) <<< s). *//*
                 F=C^(B|(~D));
                 g=(7*i)%16;
             }
-            int tempD=D;
+            int temp=D;
             D=C;
             C=B;
             B=B+shift(A+F+groupMessage[g]+T[i],offset[i]);
-           // b=b+((a+F+groupMessage[g]+T[i])<<offset[i]);
-            A=tempD;
+            // b=b+((a+F+groupMessage[g]+T[i])<<offset[i]);
+            A=temp;
         }
-        Atemp=A0+A;
-        Btemp=B0+B;
-        Ctemp=C0+C;
-        Dtemp=D0+D;
+        Atemp=Atemp+A;
+        Btemp=Btemp+B;
+        Ctemp=Ctemp+C;
+        Dtemp=Dtemp+D;
     }
-    /*
-    *整数变成16进制字符串
-    */
+    public static void md5(String message){
+
+        // byte[] jklmns = MD5.bytes("jklmn");
+        // byte[] append = MD5.append(jklmns);
+        //System.out.println(DatatypeConverter.printHexBinary(append));
+        //  byte[] bytes = MD5.appendLength(append);
+        //int[] group = MD5.group(bytes);
+        //for (int i = 0; i < group.length; i++) {
+        //    System.out.print(Integer.toHexString(group[i])+"\t");
+        // }
+        //System.out.println(DatatypeConverter.printHexBinary(bytes));
+        // System.out.println(DatatypeConverter.printHexBinary(append).length() * 4);
+        // MD5.md5();
+        //originMessage=message.getBytes();
+        // mainLoop();
+    }
+    public static String  MD5(String message){
+        bytes(message);
+        append();
+        appendLength();
+        group();
+        mainLoop();
+        System.out.println(changeHex(Atemp));
+        System.out.println(changeHex(Btemp));
+        System.out.println(changeHex(Ctemp));
+        System.out.println(changeHex(Dtemp));
+        return changeHex(Atemp)+changeHex(Btemp)+changeHex(Ctemp)+changeHex(Dtemp);
+    }
     private static  String changeHex(int a){
         String str="";
         for(int i=0;i<4;i++){
@@ -249,23 +283,5 @@ a = b + ((a + I(b,c,d) + X[k] + T[i]) <<< s). *//*
 
         }
         return str;
-    }
-    public static void md5(){
-        mainLoop();
-        System.out.println(changeHex(A0));
-        System.out.println(changeHex(B0));
-        System.out.println(changeHex(C0));
-        System.out.println(changeHex(D0));
-        System.out.println("======");
-        System.out.println(Integer.toHexString(A0));
-        System.out.println(Integer.toHexString(B0));
-        System.out.println(Integer.toHexString(C0));
-        System.out.println(Integer.toHexString(D0));
-        System.out.println("==========>");
-        System.out.println(Integer.toHexString(Atemp));
-        System.out.println(Integer.toHexString(Btemp));
-        System.out.println(Integer.toHexString(Ctemp));
-        System.out.println(Integer.toHexString(Dtemp));
-
     }
 }
