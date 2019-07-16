@@ -66,7 +66,7 @@ public class TestMD5 {
         HashMap<Object, Object> objectObjectHashMap = new HashMap();
         objectObjectHashMap.put(null,null);
     }
-    @Test
+   // @Test
     public void  test5() throws IOException {
         Document document = Jsoup.parse("http://www.stats.gov.cn/tjsj/tjbz/xzqhdm/201703/t20170310_1471429.html");
         System.out.println(document);
@@ -78,7 +78,7 @@ public class TestMD5 {
         }
         System.out.println(document.toString());
     }
-    @Test
+   // @Test
     public void test6() throws  Exception{
         //Jsoup.parse()似乎获取不了数据
         Document document = Jsoup.connect("http://www.stats.gov.cn/tjsj/tjbz/xzqhdm/201703/t20170310_1471429.html").post();
