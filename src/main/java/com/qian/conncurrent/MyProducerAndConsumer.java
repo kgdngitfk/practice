@@ -27,7 +27,7 @@ public class MyProducerAndConsumer {
                 synchronized (a){
                     if(a.size()==0){
                         Object o=new Object();
-                        log.info("{}",o);
+                        log.info("produce:{}",o);
                         a.add(o);
                         a.notifyAll();
                     }else {
@@ -64,7 +64,7 @@ public class MyProducerAndConsumer {
                 }
                 synchronized (a){
                   if(a.size()>0){
-                      log.info("{}",a.get(0));
+                      log.info("consumer:{}",a.get(0));
                       a.remove(0);
                       a.notifyAll();
                   }else {
