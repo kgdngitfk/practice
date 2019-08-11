@@ -40,5 +40,6 @@ public class Test {
     public static void main(String[] args) throws Exception {
         long calc = Test.calc();
         System.out.println(calc);
+
     }
 }
